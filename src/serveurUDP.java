@@ -10,54 +10,73 @@ import java.util.List;
 import java.util.Map;
 
 public class serveurUDP {
-	// Map of room numbers to clients
-	private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
+    // Map of room numbers to clients
+    private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
 
-	public static void main(String[] args) {
-		System.out.println("Serveur UDP started");
-		try {
-			DatagramSocket server = new DatagramSocket(2345, InetAddress.getLocalHost());
-			while(true){
-				byte[] buffer = new byte[8192];
-				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-				server.receive(packet);
-				packet.setLength(buffer.length);
+    public static void main(String[] args) {
+        System.out.println("Serveur UDP started");
+        try {
+            DatagramSocket server = new DatagramSocket(2345, InetAddress.getLocalHost());
+            while(true){
+                byte[] buffer = new byte[8192];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                server.receive(packet);
+                packet.setLength(buffer.length);
 
-				String str = new String(packet.getData()).trim();
-				if (str.startsWith("ROOM")) {
-					int roomNumber = Integer.parseInt(str.split(" ")[1]);
-					rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>()).add(new ClientInfo(packet.getAddress(), packet.getPort()));
-					System.out.println("Client added to room " + roomNumber);
-				} else {
-					int roomNumber = Integer.parseInt(str.split(" ")[1]);
-					String message = str.split(" ", 3)[2];
-					for (ClientInfo client : rooms.get(roomNumber)) {
-						byte[] msgBuffer = message.getBytes();
-						DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, client.getAddress(), client.getPort());
-						server.send(msgPacket);
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+                String str = new String(packet.getData()).trim();
+                if (str.startsWith("ROOM")) {
+                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
+                    rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>()).add(new ClientInfo(packet.getAddress(), packet.getPort()));
+                    System.out.println("Client added to room " + roomNumber);
+                } else if (str.startsWith("MSG")) {
+                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
+                    String message = str.split(" ", 3)[2];
+                    for (ClientInfo client : rooms.get(roomNumber)) {
+                        byte[] msgBuffer = message.getBytes();
+                        DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, client.getAddress(), client.getPort());
+                        server.send(msgPacket);
+                    }
+                } else if (str.startsWith("FETCH")) {
+                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
+                    // Check for new messages in the room and send them back to the client
+                    sendMessagesToClient(server, roomNumber, packet.getAddress(), packet.getPort());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-	private static class ClientInfo {
-		private InetAddress address;
-		private int port;
+    private static void sendMessagesToClient(DatagramSocket server, int roomNumber, InetAddress clientAddress, int clientPort) throws IOException {
+        if (rooms.containsKey(roomNumber)) {
+            StringBuilder messages = new StringBuilder();
+            for (ClientInfo client : rooms.get(roomNumber)) {
+                // Append each message from the room to the StringBuilder
+                // Modify this logic as per your message format
+                // For example, you can use a delimiter like "\n" between messages
+                messages.append("Message from ").append(client.getAddress()).append(":").append(client.getPort()).append("\n");
+            }
+            byte[] msgBuffer = messages.toString().getBytes();
+            DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, clientAddress, clientPort);
+            server.send(msgPacket);
+        }
+    }
 
-		public ClientInfo(InetAddress address, int port) {
-			this.address = address;
-			this.port = port;
-		}
+    private static class ClientInfo {
+        private InetAddress address;
+        private int port;
 
-		public InetAddress getAddress() {
-			return address;
-		}
+        public ClientInfo(InetAddress address, int port) {
+            this.address = address;
+            this.port = port;
+        }
 
-		public int getPort() {
-			return port;
-		}
-	}
+        public InetAddress getAddress() {
+            return address;
+        }
+
+        public int getPort() {
+            return port;
+        }
+    }
 }
