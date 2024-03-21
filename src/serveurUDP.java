@@ -28,7 +28,7 @@ public class serveurUDP {
 					int roomNumber = Integer.parseInt(str.split(" ")[1]);
 					rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>()).add(new ClientInfo(packet.getAddress(), packet.getPort()));
 					System.out.println("Client added to room " + roomNumber);
-				} else if (str.startsWith("MSG")) {
+				} else {
 					int roomNumber = Integer.parseInt(str.split(" ")[1]);
 					String message = str.split(" ", 3)[2];
 					for (ClientInfo client : rooms.get(roomNumber)) {
