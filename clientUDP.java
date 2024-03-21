@@ -15,28 +15,42 @@ public class clientUDP {
 			DatagramSocket client = new DatagramSocket();
 			InetAddress adresse = InetAddress.getLocalHost();
 			Scanner scanner = new Scanner(System.in);
-			String message;
-			do {
-				System.out.println("Entrez un message à envoyer au serveur (ou 'EXIT' pour quitter):");
-				message = scanner.nextLine();
-				byte[] buffer = message.getBytes();
-				DatagramPacket packet = new DatagramPacket(buffer, buffer.length, adresse, 2345);
-				client.send(packet);
 
-				byte[] buffer2 = new byte[8196];
-				DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length);
-				client.receive(packet2);
+			System.out.println("Entrez le numéro de la salle:");
+			String roomId = scanner.nextLine();
 
-				System.out.println("Message du serveur: " + new String(packet2.getData(), 0, packet2.getLength()).trim());
-			} while (!message.equals("EXIT"));
+			// Thread pour l'envoi de messages
+			new Thread(() -> {
+				try {
+					String message;
+					do {
+						System.out.println("Entrez un message à envoyer au serveur (ou 'EXIT' pour quitter):");
+						message = scanner.nextLine();
+						byte[] buffer = (roomId + "/" + message).getBytes();
+						DatagramPacket packet = new DatagramPacket(buffer, buffer.length, adresse, 2345);
+						client.send(packet);
+					} while (!message.equals("EXIT"));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}).start();
 
-			scanner.close();
-			client.close();
+			// Thread pour la réception de messages
+			new Thread(() -> {
+				try {
+					byte[] buffer2 = new byte[8196];
+					DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length);
+					while (true) {
+						client.receive(packet2);
+						System.out.println("Message du serveur: " + new String(packet2.getData(), 0, packet2.getLength()).trim());
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}).start();
 		} catch (SocketException e) {
 			e.printStackTrace();
 		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

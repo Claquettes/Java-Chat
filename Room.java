@@ -24,4 +24,12 @@ public class Room {
     public List<InetSocketAddress> getClients() {
         return clients;
     }
+
+    public void removeClient(InetSocketAddress client) {
+        clients.remove(client);
+    }
+
+    public boolean isEmpty() {
+        return clients.isEmpty();
+    }
 }
