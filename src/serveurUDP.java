@@ -7,7 +7,7 @@ import java.net.SocketException;
 
 public class serveurUDP {
 	public static void main(String[] args) {
-		System.out.println("Serveur UDP");
+		System.out.println("Serveur UDP started");
 		try {
 			// Création d'un nouveau socket serveur sur le port 2345
 			DatagramSocket server = new DatagramSocket(2345, InetAddress.getLocalHost());
