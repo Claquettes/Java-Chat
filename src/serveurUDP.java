@@ -29,10 +29,11 @@ public class serveurUDP {
 					new Thread(() -> {
 						try {
 							int id = (int) (Math.random() * 1000);
-							// Création d'un message de réponse
+							// we get the port of the thread7
+							int port = packet.getPort();
 
 							//we concatenate the message with the id
-							String Welcome_message = "You have been assigned the ID: " + id + ". Serveur RX302 ready";
+							String Welcome_message = "You have been assigned the ID: " + id + ". Serveur RX302 ready on port " + port;
 							byte[] buffer2 = Welcome_message.getBytes();
 							// Création d'un paquet pour envoyer la réponse
 							DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length, packet.getAddress(), packet.getPort());
