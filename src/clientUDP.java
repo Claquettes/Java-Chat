@@ -22,9 +22,7 @@ public class clientUDP {
 			while (true) {
 				System.out.println("Enter a message to send to the server:");
 				String message = scanner.nextLine();
-				byte[] buffer = ("MSG " + roomNumber + " " + message).getBytes();
-				DatagramPacket packet = new DatagramPacket(buffer, buffer.length, adresse, 2345);
-				client.send(packet);
+				sendMsg(client, adresse, roomNumber, message);
 
 				byte[] buffer2 = new byte[8196];
 				DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length, adresse, 2345);
@@ -32,6 +30,16 @@ public class clientUDP {
 
 				System.out.println("Message from server: " + new String(packet2.getData()).trim());
 			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void sendMsg(DatagramSocket client, InetAddress adresse, String roomNumber, String message) {
+		try {
+			byte[] buffer = ("MSG " + roomNumber + " " + message).getBytes();
+			DatagramPacket packet = new DatagramPacket(buffer, buffer.length, adresse, 2345);
+			client.send(packet);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
