@@ -9,7 +9,28 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class clientUDP {
-	public static void main(String[] args){
+	private static int id;
+	private static int port;
+
+	public static void setId(int id) {
+		clientUDP.id = id;
+		System.out.println("Client Id successfully set to " + id);
+	}
+
+	public static void setPort(int port) {
+		clientUDP.port = port;
+		System.out.println("Client port successfully set to " + port);
+	}
+
+	public int getId() {
+		return this.id;
+	}
+
+	public int getPort() {
+		return this.port;
+	}
+
+	public static void main(String[] args) {
 		System.out.println("Client UDP");
 		// Création du message initial à envoyer au serveur
 		byte[] buffer = "hello serveur RX302".getBytes();
@@ -31,10 +52,22 @@ public class clientUDP {
 			client.receive(packet2);
 
 			// Affichage de la réponse du serveur
-			System.out.println(new String(packet2.getData()).trim() + " : " + packet2.getAddress() + ":" + packet2.getPort());
+			System.out.println(
+					new String(packet2.getData()).trim() + " : " + packet2.getAddress() + ":" + packet2.getPort());
 
-			// Si la réponse du serveur est "Serveur RX302 ready"
-			if (new String(packet2.getData()).trim().equals("Serveur RX302 ready")) {
+			if (new String(packet2.getData()).trim().startsWith("You")) {
+				System.out.println("DESPACITO");
+				String serverResponse = new String(packet2.getData(), 0, packet2.getLength()).trim();
+				// Parse the ID and port from the server's response
+				String[] words = serverResponse.split(" ");
+				try {
+					setId(Integer.parseInt(words[6]));
+
+					System.out.println("Trying to parse port from " + words[10]);
+					setPort(Integer.parseInt(words[10]));
+				} catch (NumberFormatException e) {
+					System.out.println("Could not parse ID and port from server's response.");
+				}
 				// Création d'un scanner pour lire l'entrée de l'utilisateur
 				Scanner scanner = new Scanner(System.in);
 				System.out.println("Entrez un message à envoyer au serveur:");
@@ -55,7 +88,7 @@ public class clientUDP {
 
 				// Affichage de la réponse du serveur
 				System.out.println("Message du serveur: " + new String(packet4.getData()).trim());
-				
+
 				scanner.close();
 			}
 			// Fermeture du socket client

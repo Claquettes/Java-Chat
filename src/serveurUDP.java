@@ -33,7 +33,7 @@ public class serveurUDP {
 							int port = packet.getPort();
 
 							//we concatenate the message with the id
-							String Welcome_message = "You have been assigned the ID: " + id + ". Serveur RX302 ready on port " + port;
+							String Welcome_message = "You have been assigned the ID: " + id + " and this port " + port + " is the one you will use to communicate with the server";
 							byte[] buffer2 = Welcome_message.getBytes();
 							// Création d'un paquet pour envoyer la réponse
 							DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length, packet.getAddress(), packet.getPort());
