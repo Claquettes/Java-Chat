@@ -1,63 +1,63 @@
 package src;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class serveurUDP {
+	// Map of room numbers to clients
+	private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
+
 	public static void main(String[] args) {
 		System.out.println("Serveur UDP started");
 		try {
-			// Création d'un nouveau socket serveur sur le port 2345
 			DatagramSocket server = new DatagramSocket(2345, InetAddress.getLocalHost());
 			while(true){
-				// Création d'un buffer pour stocker les données entrantes
 				byte[] buffer = new byte[8192];
-				// Création d'un paquet pour recevoir les données
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-				// Attente de la réception d'un paquet
 				server.receive(packet);
 				packet.setLength(buffer.length);
 
-				// Conversion des données reçues en chaîne de caractères
 				String str = new String(packet.getData()).trim();
-				// Si le message reçu est "hello serveur RX302"
-				if (str.equals("hello serveur RX302")) {
-					System.out.println("Nouveau client : " + packet.getAddress() + ":" + packet.getPort());
-					//We open a new thread to handle the client
-					new Thread(() -> {
-						try {
-							int id = (int) (Math.random() * 1000);
-							// we get the port of the thread7
-							int port = packet.getPort();
-
-							//we concatenate the message with the id
-							String Welcome_message = "You have been assigned the ID: " + id + " and this port " + port + " is the one you will use to communicate with the server";
-							byte[] buffer2 = Welcome_message.getBytes();
-							// Création d'un paquet pour envoyer la réponse
-							DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length, packet.getAddress(), packet.getPort());
-							// Envoi de la réponse
-							server.send(packet2);
-						} catch (IOException e) {
-							// Gestion des exceptions liées aux entrées/sorties
-							e.printStackTrace();
-						}
-					}).start();
-				} else {
-					// Si le message reçu n'est pas "hello serveur RX302", affichage du message et renvoi du même message
-					System.out.println("Message from client: " + str);
-					byte[] buffer2 = str.getBytes();
-					DatagramPacket packet2 = new DatagramPacket(buffer2, buffer2.length, packet.getAddress(), packet.getPort());
-					server.send(packet2);
+				if (str.startsWith("ROOM")) {
+					int roomNumber = Integer.parseInt(str.split(" ")[1]);
+					rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>()).add(new ClientInfo(packet.getAddress(), packet.getPort()));
+					System.out.println("Client added to room " + roomNumber);
+				} else if (str.startsWith("MSG")) {
+					int roomNumber = Integer.parseInt(str.split(" ")[1]);
+					String message = str.split(" ", 3)[2];
+					for (ClientInfo client : rooms.get(roomNumber)) {
+						byte[] msgBuffer = message.getBytes();
+						DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, client.getAddress(), client.getPort());
+						server.send(msgPacket);
+					}
 				}
 			}
-		} catch (SocketException e) {
-			// Gestion des exceptions liées au socket
+		} catch (Exception e) {
 			e.printStackTrace();
-		} catch (IOException e) {
-			// Gestion des exceptions liées aux entrées/sorties
-			e.printStackTrace();
+		}
+	}
+
+	private static class ClientInfo {
+		private InetAddress address;
+		private int port;
+
+		public ClientInfo(InetAddress address, int port) {
+			this.address = address;
+			this.port = port;
+		}
+
+		public InetAddress getAddress() {
+			return address;
+		}
+
+		public int getPort() {
+			return port;
 		}
 	}
 }
