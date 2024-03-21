@@ -51,10 +51,6 @@ public class serveurUDP {
         if (rooms.containsKey(roomNumber)) {
             StringBuilder messages = new StringBuilder();
             for (ClientInfo client : rooms.get(roomNumber)) {
-                // Append each message from the room to the StringBuilder
-                // Modify this logic as per your message format
-                // For example, you can use a delimiter like "\n" between messages
-                messages.append("Message from ").append(client.getAddress()).append(":").append(client.getPort()).append("\n");
             }
             byte[] msgBuffer = messages.toString().getBytes();
             DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, clientAddress, clientPort);
