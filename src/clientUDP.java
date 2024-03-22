@@ -79,16 +79,13 @@ public class clientUDP {
 				client.receive(packet);
 
 				String receivedMessage = new String(packet.getData(), 0, packet.getLength());
-				// Filter out the informational messages from the server
-				System.out.println(contentAfterIPAndPort(receivedMessage));
+				if (receivedMessage != null && receivedMessage.length() > 0) {
+					System.out.println(receivedMessage);
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
-	public static String contentAfterIPAndPort(String message) {
-
-		return message;
-	}
 }
