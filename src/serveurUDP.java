@@ -13,6 +13,7 @@ public class serveurUDP implements Runnable {
     // Map of room numbers to clients
     private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
     private final int roomNumber;
+    private static DatagramSocket server; // Declare DatagramSocket as static to be accessible from finally block
 
     public serveurUDP(int roomNumber) {
         this.roomNumber = roomNumber;
@@ -21,7 +22,7 @@ public class serveurUDP implements Runnable {
     public static void main(String[] args) {
         System.out.println("Serveur UDP started");
         try {
-            DatagramSocket server = new DatagramSocket(2345, InetAddress.getLocalHost());
+            server = new DatagramSocket(2345, InetAddress.getLocalHost());
             while (true) {
                 byte[] buffer = new byte[8192];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -29,7 +30,9 @@ public class serveurUDP implements Runnable {
                 packet.setLength(buffer.length);
 
                 String str = new String(packet.getData()).trim();
-                System.out.println("Received: " + str);
+                if (!str.startsWith("FETCH")) {
+                    System.out.println("Received message: " + str);
+                }
 
                 if (str.startsWith("ROOM")) {
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
@@ -71,6 +74,10 @@ public class serveurUDP implements Runnable {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (server != null) {
+                server.close(); // on libère le socket
+            }
         }
     }
 

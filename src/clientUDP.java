@@ -14,12 +14,21 @@ public class clientUDP {
 
 	public static void main(String[] args) {
 		System.out.println("Client UDP");
+		DatagramSocket client = null;
 		try {
-			DatagramSocket client = new DatagramSocket();
+			client = new DatagramSocket();
 			InetAddress serverAddress = InetAddress.getLocalHost();
 			Scanner scanner = new Scanner(System.in);
+			
 			System.out.println("Enter room number:");
 			String roomNumber = scanner.nextLine();
+
+			// we make sure that the noomnumber is not empty and only contains digits
+			while (roomNumber.length() == 0 || !roomNumber.matches("[0-9]+")) {
+				System.out.println("Enter a valid room number:");
+				roomNumber = scanner.nextLine();
+			}
+
 			byte[] roomBuffer = ("ROOM " + roomNumber).getBytes();
 			DatagramPacket roomPacket = new DatagramPacket(roomBuffer, roomBuffer.length, serverAddress, SERVER_PORT);
 			client.send(roomPacket);
@@ -32,6 +41,10 @@ public class clientUDP {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			if (client != null) {
+				client.close();
+			}
 		}
 	}
 
