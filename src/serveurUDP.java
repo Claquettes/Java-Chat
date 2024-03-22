@@ -1,5 +1,4 @@
 package src;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -9,15 +8,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class serveurUDP {
+public class serveurUDP implements Runnable {
     // Map of room numbers to clients
     private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
+    private final int roomNumber;
+    
+    public serveurUDP(int roomNumber) {
+        this.roomNumber = roomNumber;
+    }
 
     public static void main(String[] args) {
         System.out.println("Serveur UDP started");
         try {
             DatagramSocket server = new DatagramSocket(2345, InetAddress.getLocalHost());
-            while(true){
+            while (true) {
                 byte[] buffer = new byte[8192];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 server.receive(packet);
@@ -28,6 +32,9 @@ public class serveurUDP {
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
                     rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>()).add(new ClientInfo(packet.getAddress(), packet.getPort()));
                     System.out.println("Client added to room " + roomNumber);
+                    serveurUDP roomServer = new serveurUDP(roomNumber);
+                    Thread roomThread = new Thread(roomServer); //on créé la room dans un thread a part
+                    roomThread.start();
                 } else if (str.startsWith("MSG")) {
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
                     String message = str.split(" ", 3)[2];
@@ -50,10 +57,23 @@ public class serveurUDP {
         }
     }
 
+    @Override
+    public void run() {
+        try {
+            // Implement room-specific behavior here
+            while (true) {
+                // Example: Listen for room-specific messages
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void sendMessagesToClient(DatagramSocket server, int roomNumber, InetAddress clientAddress, int clientPort) throws IOException {
         if (rooms.containsKey(roomNumber)) {
             StringBuilder messages = new StringBuilder();
             for (ClientInfo client : rooms.get(roomNumber)) {
+                // Build messages to send back to the client
             }
             byte[] msgBuffer = messages.toString().getBytes();
             DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, clientAddress, clientPort);
