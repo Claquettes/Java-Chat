@@ -1,4 +1,5 @@
 package src;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -34,44 +35,58 @@ public class serveurUDP implements Runnable {
                     System.out.println("Received message: " + str);
                 }
 
-                if (str.startsWith("ROOM")) {
-                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
-                    rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>())
-                            .add(new ClientInfo(packet.getAddress(), packet.getPort(), System.currentTimeMillis()));
-                    System.out.println("Client added to room " + roomNumber);
-                    serveurUDP roomServer = new serveurUDP(roomNumber);
-                    Thread roomThread = new Thread(roomServer); // on créé la room dans un thread a part
-                    roomThread.start();
-                } else if (str.startsWith("MSG")) {
-                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
-                    String message = str.split(" ", 3)[2];
-                    for (ClientInfo client : rooms.get(roomNumber)) { // pour le timeout
-                        if (client.getAddress().equals(packet.getAddress()) && client.getPort() == packet.getPort()) {
-                            client.setLastActiveTime(System.currentTimeMillis());
-                            continue;
-                        }
-                        byte[] msgBuffer = message.getBytes();
-                        DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, client.getAddress(),
-                                client.getPort());
-                        server.send(msgPacket);
-                    }
-                } else if (str.startsWith("FETCH")) {
-                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
-                    sendMessagesToClient(server, roomNumber, packet.getAddress(), packet.getPort());
-                } else if (str.startsWith("MSG EXIT")) {
-                    System.out.println("Client asked to leave room");
-                    // we close the connexion of the client and remove it from the room
-                    int roomNumber = Integer.parseInt(str.split(" ")[1]);
+                String[] tokens = str.split(" ");
+                String command = tokens[0];
+                int roomNumber;
+                String message;
 
-                    for (ClientInfo client : rooms.get(roomNumber)) {
-                        if (client.getAddress().equals(packet.getAddress()) && client.getPort() == packet.getPort()) {
-                            rooms.get(roomNumber).remove(client);
-                            break;
+                switch (command) {
+                    case "ROOM":
+                        roomNumber = Integer.parseInt(tokens[1]);
+                        rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>())
+                                .add(new ClientInfo(packet.getAddress(), packet.getPort(), System.currentTimeMillis()));
+                        System.out.println("Client added to room " + roomNumber);
+                        serveurUDP roomServer = new serveurUDP(roomNumber);
+                        Thread roomThread = new Thread(roomServer); // on créé la room dans un thread a part
+                        roomThread.start();
+                        break;
+                    case "MSG":
+                        roomNumber = Integer.parseInt(tokens[1]);
+                        message = tokens[2];
+                        for (ClientInfo client : rooms.get(roomNumber)) { // pour le timeout
+                            if (client.getAddress().equals(packet.getAddress())
+                                    && client.getPort() == packet.getPort()) {
+                                client.setLastActiveTime(System.currentTimeMillis());
+                                continue;
+                            }
+                            byte[] msgBuffer = message.getBytes();
+                            DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length,
+                                    client.getAddress(),
+                                    client.getPort());
+                            server.send(msgPacket);
                         }
-                    }
-                    if (rooms.get(roomNumber).isEmpty()) {
-                        rooms.remove(roomNumber);
-                    }
+                        break;
+                    case "FETCH":
+                        roomNumber = Integer.parseInt(tokens[1]);
+                        sendMessagesToClient(server, roomNumber, packet.getAddress(), packet.getPort());
+                        break;
+                    case "MSG EXIT":
+                        System.out.println("Client asked to leave room");
+                        // we close the connexion of the client and remove it from the room
+                        roomNumber = Integer.parseInt(tokens[1]);
+                        Iterator<ClientInfo> iterator = rooms.get(roomNumber).iterator();
+                        while (iterator.hasNext()) {
+                            ClientInfo client = iterator.next();
+                            if (client.getAddress().equals(packet.getAddress())
+                                    && client.getPort() == packet.getPort()) {
+                                iterator.remove();
+                                break;
+                            }
+                        }
+                        if (rooms.get(roomNumber).isEmpty()) {
+                            rooms.remove(roomNumber);
+                        }
+                        break;
                 }
 
                 checkClientTimeouts(); // on regarde si un client est inactif
@@ -83,6 +98,7 @@ public class serveurUDP implements Runnable {
                 server.close(); // on libère le socket
             }
         }
+
     }
 
     @Override
@@ -143,22 +159,22 @@ public class serveurUDP implements Runnable {
                 roomIterator.remove(); // Remove the room if it no longer exists
                 continue;
             }
-            
+
             Iterator<ClientInfo> clientIterator = clients.iterator();
             while (clientIterator.hasNext()) {
                 ClientInfo client = clientIterator.next();
                 if (currentTime - client.getLastActiveTime() > TIMEOUT_INTERVAL) {
                     clientIterator.remove();
                     System.out.println("Client " + client.getAddress() + ":" + client.getPort() + " timed out");
-                    
+
                 }
             }
-    
+
             if (clients.isEmpty()) {
                 roomIterator.remove();
                 System.out.println("Room " + roomNumber + " became empty and was removed");
             }
         }
     }
-    
+
 }
