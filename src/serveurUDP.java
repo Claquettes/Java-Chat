@@ -32,6 +32,9 @@ public class serveurUDP {
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
                     String message = str.split(" ", 3)[2];
                     for (ClientInfo client : rooms.get(roomNumber)) {
+                        if (client.getAddress().equals(packet.getAddress()) && client.getPort() == packet.getPort()) {
+                            continue;
+                        }
                         byte[] msgBuffer = message.getBytes();
                         DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, client.getAddress(), client.getPort());
                         server.send(msgPacket);
