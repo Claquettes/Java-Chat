@@ -1,19 +1,19 @@
 package src;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 public class serveurUDP implements Runnable {
-    // Map of room numbers to clients
     private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
     private final int roomNumber;
-    private static DatagramSocket server; // Declare DatagramSocket as static to be accessible from finally block
+    private static DatagramSocket server;
+    private static final long TIMEOUT_INTERVAL = 10000; // Increased timeout interval for testing (10 seconds)
 
     public serveurUDP(int roomNumber) {
         this.roomNumber = roomNumber;
@@ -37,7 +37,7 @@ public class serveurUDP implements Runnable {
                 if (str.startsWith("ROOM")) {
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
                     rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>())
-                            .add(new ClientInfo(packet.getAddress(), packet.getPort()));
+                            .add(new ClientInfo(packet.getAddress(), packet.getPort(), System.currentTimeMillis()));
                     System.out.println("Client added to room " + roomNumber);
                     serveurUDP roomServer = new serveurUDP(roomNumber);
                     Thread roomThread = new Thread(roomServer); // on créé la room dans un thread a part
@@ -45,8 +45,9 @@ public class serveurUDP implements Runnable {
                 } else if (str.startsWith("MSG")) {
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
                     String message = str.split(" ", 3)[2];
-                    for (ClientInfo client : rooms.get(roomNumber)) {
+                    for (ClientInfo client : rooms.get(roomNumber)) { // pour le timeout
                         if (client.getAddress().equals(packet.getAddress()) && client.getPort() == packet.getPort()) {
+                            client.setLastActiveTime(System.currentTimeMillis());
                             continue;
                         }
                         byte[] msgBuffer = message.getBytes();
@@ -61,6 +62,7 @@ public class serveurUDP implements Runnable {
                     System.out.println("Client asked to leave room");
                     // we close the connexion of the client and remove it from the room
                     int roomNumber = Integer.parseInt(str.split(" ")[1]);
+
                     for (ClientInfo client : rooms.get(roomNumber)) {
                         if (client.getAddress().equals(packet.getAddress()) && client.getPort() == packet.getPort()) {
                             rooms.get(roomNumber).remove(client);
@@ -71,6 +73,8 @@ public class serveurUDP implements Runnable {
                         rooms.remove(roomNumber);
                     }
                 }
+
+                checkClientTimeouts(); // on regarde si un client est inactif
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -103,10 +107,12 @@ public class serveurUDP implements Runnable {
     private static class ClientInfo {
         private InetAddress address;
         private int port;
+        private long lastActiveTime;
 
-        public ClientInfo(InetAddress address, int port) {
+        public ClientInfo(InetAddress address, int port, long lastActiveTime) {
             this.address = address;
             this.port = port;
+            this.lastActiveTime = lastActiveTime;
         }
 
         public InetAddress getAddress() {
@@ -116,5 +122,43 @@ public class serveurUDP implements Runnable {
         public int getPort() {
             return port;
         }
+
+        public long getLastActiveTime() {
+            return lastActiveTime;
+        }
+
+        public void setLastActiveTime(long lastActiveTime) {
+            this.lastActiveTime = lastActiveTime;
+        }
     }
+
+    private static void checkClientTimeouts() {
+        long currentTime = System.currentTimeMillis();
+        Iterator<Integer> roomIterator = rooms.keySet().iterator();
+        while (roomIterator.hasNext()) {
+            Integer roomNumber = roomIterator.next();
+            System.out.println("Checking room " + roomNumber + " for inactive clients");
+            List<ClientInfo> clients = rooms.get(roomNumber);
+            if (clients == null) {
+                roomIterator.remove(); // Remove the room if it no longer exists
+                continue;
+            }
+            
+            Iterator<ClientInfo> clientIterator = clients.iterator();
+            while (clientIterator.hasNext()) {
+                ClientInfo client = clientIterator.next();
+                if (currentTime - client.getLastActiveTime() > TIMEOUT_INTERVAL) {
+                    clientIterator.remove();
+                    System.out.println("Client " + client.getAddress() + ":" + client.getPort() + " timed out");
+                    
+                }
+            }
+    
+            if (clients.isEmpty()) {
+                roomIterator.remove();
+                System.out.println("Room " + roomNumber + " became empty and was removed");
+            }
+        }
+    }
+    
 }
