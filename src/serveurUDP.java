@@ -14,7 +14,7 @@ public class serveurUDP implements Runnable {
     private static Map<Integer, List<ClientInfo>> rooms = new HashMap<>();
     private final int roomNumber;
     private static DatagramSocket server;
-    private static final long TIMEOUT_INTERVAL = 10000; // Increased timeout interval for testing (10 seconds)
+    private static final long TIMEOUT_INTERVAL = 100000; // en mili 
 
     public serveurUDP(int roomNumber) {
         this.roomNumber = roomNumber;
@@ -156,7 +156,7 @@ public class serveurUDP implements Runnable {
             System.out.println("Checking room " + roomNumber + " for inactive clients");
             List<ClientInfo> clients = rooms.get(roomNumber);
             if (clients == null) {
-                roomIterator.remove(); // Remove the room if it no longer exists
+                roomIterator.remove(); // on enlève la room si elle est vide 
                 continue;
             }
 

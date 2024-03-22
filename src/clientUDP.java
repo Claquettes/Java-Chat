@@ -23,8 +23,7 @@ public class clientUDP {
 			System.out.println("Enter room number:");
 			String roomNumber = scanner.nextLine();
 
-			// we make sure that the noomnumber is not empty and only contains digits
-			while (roomNumber.length() == 0 || !roomNumber.matches("[0-9]+")) {
+			while (roomNumber.length() == 0 || !roomNumber.matches("[0-9]+")) { //on vérifie que le RoomNumber est bien un chiffre
 				System.out.println("Enter a valid room number:");
 				roomNumber = scanner.nextLine();
 			}
