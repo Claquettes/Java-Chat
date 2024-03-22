@@ -17,19 +17,14 @@ public class clientUDP {
 		try {
 			DatagramSocket client = new DatagramSocket();
 			InetAddress serverAddress = InetAddress.getLocalHost();
-
 			Scanner scanner = new Scanner(System.in);
 			System.out.println("Enter room number:");
 			String roomNumber = scanner.nextLine();
 			byte[] roomBuffer = ("ROOM " + roomNumber).getBytes();
 			DatagramPacket roomPacket = new DatagramPacket(roomBuffer, roomBuffer.length, serverAddress, SERVER_PORT);
 			client.send(roomPacket);
-
-			// Start a timer to fetch messages periodically
 			Timer timer = new Timer();
 			timer.scheduleAtFixedRate(new FetchMessagesTask(client, serverAddress, roomNumber), 0, FETCH_INTERVAL_MS);
-
-			// Continue sending messages from the client
 			while (true) {
 				System.out.println("Enter a message to send to the server:");
 				String message = scanner.nextLine();
@@ -45,9 +40,16 @@ public class clientUDP {
 			if (message.length() == 0) {
 				return;
 			} else {
-				byte[] buffer = ("MSG " + roomNumber + " " + message).getBytes();
-				DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
-				client.send(packet);
+				if (message.startsWith("EXIT") || message.equals("EXIT") || message.equals("exit")) {
+					byte[] buffer = ("EXIT " + roomNumber).getBytes();
+					DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
+					client.send(packet);
+					System.exit(0);
+				} else {
+					byte[] buffer = ("MSG " + roomNumber + " " + message).getBytes();
+					DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
+					client.send(packet);
+				}
 			}
 
 		} catch (Exception e) {
