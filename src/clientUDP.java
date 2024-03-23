@@ -37,7 +37,6 @@ public class clientUDP {
             receiveThread.start();
 
             while (true) {
-                System.out.println("Enter a message to send to the server:");
                 String message = scanner.nextLine();
                 sendMsg(client, serverAddress, roomNumber, message);
             }
