@@ -3,30 +3,28 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class clientUDP {
 
     private static final int SERVER_PORT = 2345;
-    private static final int FETCH_INTERVAL_MS = 1000;
     private static String pseudonym;
 
     public static void main(String[] args) {
         System.out.println("Client UDP");
-        DatagramSocket client = null;
+        final DatagramSocket[] clientContainer = new DatagramSocket[1];
         try {
-            client = new DatagramSocket();
+            clientContainer[0] = new DatagramSocket();
+            DatagramSocket client = clientContainer[0];
             InetAddress serverAddress = InetAddress.getLocalHost();
             Scanner scanner = new Scanner(System.in);
-            
+
             System.out.println("Enter your pseudonym:");
             pseudonym = scanner.nextLine();
 
             System.out.println("Enter room number:");
             String roomNumber = scanner.nextLine();
 
-            while (roomNumber.length() == 0 || !roomNumber.matches("[0-9]+")) { 
+            while (roomNumber.length() == 0 || !roomNumber.matches("[0-9]+")) {
                 System.out.println("Enter a valid room number:");
                 roomNumber = scanner.nextLine();
             }
@@ -34,8 +32,10 @@ public class clientUDP {
             byte[] roomBuffer = ("ROOM " + roomNumber + " " + pseudonym).getBytes();
             DatagramPacket roomPacket = new DatagramPacket(roomBuffer, roomBuffer.length, serverAddress, SERVER_PORT);
             client.send(roomPacket);
-            Timer timer = new Timer();
-            timer.scheduleAtFixedRate(new FetchMessagesTask(client, serverAddress, roomNumber), 0, FETCH_INTERVAL_MS);
+
+            Thread receiveThread = new Thread(() -> receiveMessages(clientContainer[0]));
+            receiveThread.start();
+
             while (true) {
                 System.out.println("Enter a message to send to the server:");
                 String message = scanner.nextLine();
@@ -44,8 +44,8 @@ public class clientUDP {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            if (client != null) {
-                client.close();
+            if (clientContainer[0] != null) {
+                clientContainer[0].close();
             }
         }
     }
@@ -55,8 +55,8 @@ public class clientUDP {
             if (message.length() == 0) {
                 return;
             } else {
-                if (message.startsWith("EXIT") || message.equals("EXIT") || message.equals("exit")) {
-                    byte[] buffer = ("EXIT " + roomNumber).getBytes();
+                if (message.equalsIgnoreCase("EXIT")) {
+                    byte[] buffer = ("MSG EXIT " + roomNumber).getBytes();
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length, serverAddress, SERVER_PORT);
                     client.send(packet);
                     System.exit(0);
@@ -72,36 +72,20 @@ public class clientUDP {
         }
     }
 
-    private static class FetchMessagesTask extends TimerTask {
-        private DatagramSocket client;
-        private InetAddress serverAddress;
-        private String roomNumber;
-
-        public FetchMessagesTask(DatagramSocket client, InetAddress serverAddress, String roomNumber) {
-            this.client = client;
-            this.serverAddress = serverAddress;
-            this.roomNumber = roomNumber;
-        }
-
-        @Override
-        public void run() {
-            try {
-                byte[] fetchBuffer = ("FETCH " + roomNumber).getBytes();
-                DatagramPacket fetchPacket = new DatagramPacket(fetchBuffer, fetchBuffer.length, serverAddress,
-                        SERVER_PORT);
-                client.send(fetchPacket);
-
+    private static void receiveMessages(DatagramSocket client) {
+        try {
+            while (true) {
                 byte[] buffer = new byte[8196];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 client.receive(packet);
 
                 String receivedMessage = new String(packet.getData(), 0, packet.getLength());
-                if (receivedMessage != null && receivedMessage.length() > 0) {
+                if (!receivedMessage.isEmpty()) {
                     System.out.println(receivedMessage);
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

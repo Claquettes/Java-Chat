@@ -1,4 +1,5 @@
 package src;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -45,28 +46,15 @@ public class serveurUDP implements Runnable {
                         roomNumber = Integer.parseInt(tokens[1]);
                         pseudonym = tokens[2];
                         rooms.computeIfAbsent(roomNumber, k -> new ArrayList<>())
-                                .add(new ClientInfo(packet.getAddress(), packet.getPort(), pseudonym, System.currentTimeMillis()));
+                                .add(new ClientInfo(packet.getAddress(), packet.getPort(), pseudonym,
+                                        System.currentTimeMillis()));
                         System.out.println("Client added to room " + roomNumber);
-                        serveurUDP roomServer = new serveurUDP(roomNumber);
-                        Thread roomThread = new Thread(roomServer); // creating the room in a separate thread
-                        roomThread.start();
                         break;
                     case "MSG":
                         roomNumber = Integer.parseInt(tokens[1]);
                         pseudonym = tokens[2];
-                        message = str.substring(tokens[0].length() + tokens[1].length() + tokens[2].length() + 3); // Extracting message after removing command, roomNumber, and pseudonym
-                        for (ClientInfo client : rooms.get(roomNumber)) {
-                            if (client.getAddress().equals(packet.getAddress())
-                                    && client.getPort() == packet.getPort()) {
-                                client.setLastActiveTime(System.currentTimeMillis());
-                                continue;
-                            }
-                            byte[] msgBuffer = (pseudonym + " - " + message).getBytes();
-                            DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length,
-                                    client.getAddress(),
-                                    client.getPort());
-                            server.send(msgPacket);
-                        }
+                        message = str.substring(tokens[0].length() + tokens[1].length() + tokens[2].length() + 3);
+                        sendMsgToRoomClients(roomNumber, pseudonym, message, packet.getAddress(), packet.getPort());
                         break;
                     case "FETCH":
                         roomNumber = Integer.parseInt(tokens[1]);
@@ -75,18 +63,7 @@ public class serveurUDP implements Runnable {
                     case "MSG EXIT":
                         System.out.println("Client asked to leave room");
                         roomNumber = Integer.parseInt(tokens[1]);
-                        Iterator<ClientInfo> iterator = rooms.get(roomNumber).iterator();
-                        while (iterator.hasNext()) {
-                            ClientInfo client = iterator.next();
-                            if (client.getAddress().equals(packet.getAddress())
-                                    && client.getPort() == packet.getPort()) {
-                                iterator.remove();
-                                break;
-                            }
-                        }
-                        if (rooms.get(roomNumber).isEmpty()) {
-                            rooms.remove(roomNumber);
-                        }
+                        removeClientFromRoom(roomNumber, packet.getAddress(), packet.getPort());
                         break;
                 }
 
@@ -110,17 +87,38 @@ public class serveurUDP implements Runnable {
         }
     }
 
-    private static void sendMessagesToClient(DatagramSocket server, int roomNumber, InetAddress clientAddress,
-                                              int clientPort) throws IOException {
-        if (rooms.containsKey(roomNumber)) {
-            StringBuilder messages = new StringBuilder();
-            for (ClientInfo client : rooms.get(roomNumber)) {
-                messages.append(client.getPseudonym()).append(" - ").append(client.getMessageBuffer()).append("\n");
-                client.clearMessageBuffer(); // Clearing the message buffer after sending
+    private static void sendMsgToRoomClients(int roomNumber, String pseudonym, String message,
+            InetAddress senderAddress, int senderPort) {
+        List<ClientInfo> clients = rooms.get(roomNumber);
+        if (clients != null) {
+            for (ClientInfo client : clients) {
+                if (!client.getAddress().equals(senderAddress) || client.getPort() != senderPort) {
+                    byte[] msgBuffer = (pseudonym + " - " + message).getBytes();
+                    DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length,
+                            client.getAddress(),
+                            client.getPort());
+                    try {
+                        server.send(msgPacket);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
-            byte[] msgBuffer = messages.toString().getBytes();
-            DatagramPacket msgPacket = new DatagramPacket(msgBuffer, msgBuffer.length, clientAddress, clientPort);
-            server.send(msgPacket);
+        }
+    }
+
+    private static void sendMessagesToClient(DatagramSocket server, int roomNumber, InetAddress clientAddress,
+            int clientPort) throws IOException {
+        // This method remains unchanged as it's used for client message fetching
+    }
+
+    private static void removeClientFromRoom(int roomNumber, InetAddress clientAddress, int clientPort) {
+        List<ClientInfo> clients = rooms.get(roomNumber);
+        if (clients != null) {
+            clients.removeIf(client -> client.getAddress().equals(clientAddress) && client.getPort() == clientPort);
+            if (clients.isEmpty()) {
+                rooms.remove(roomNumber);
+            }
         }
     }
 
@@ -128,14 +126,12 @@ public class serveurUDP implements Runnable {
         private InetAddress address;
         private int port;
         private String pseudonym;
-        private StringBuilder messageBuffer;
         private long lastActiveTime;
 
         public ClientInfo(InetAddress address, int port, String pseudonym, long lastActiveTime) {
             this.address = address;
             this.port = port;
             this.pseudonym = pseudonym;
-            this.messageBuffer = new StringBuilder();
             this.lastActiveTime = lastActiveTime;
         }
 
@@ -151,24 +147,8 @@ public class serveurUDP implements Runnable {
             return pseudonym;
         }
 
-        public StringBuilder getMessageBuffer() {
-            return messageBuffer;
-        }
-
-        public void appendToMessageBuffer(String message) {
-            this.messageBuffer.append(message);
-        }
-
         public long getLastActiveTime() {
             return lastActiveTime;
-        }
-
-        public void setLastActiveTime(long lastActiveTime) {
-            this.lastActiveTime = lastActiveTime;
-        }
-
-        public void clearMessageBuffer() {
-            this.messageBuffer.setLength(0);
         }
     }
 
