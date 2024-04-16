@@ -1,6 +1,6 @@
 # Java Chat Server and Client
 
-This project is a simple implementation of a chat server and client in Java using the TCP protocol. It was developed by Arthur Rigonnet and Ponton Mathieu as part of the Networks course in the 3rd year of FISA at Polytech Lyon, under the supervision of Mr. Lucas De Meyer.
+This project is a simple implementation of a chat server and client in Java using the UDP protocol. It was developed by Arthur Rigonnet and Ponton Mathieu as part of the Networks course in the 3rd year of FISA at Polytech Lyon, under the supervision of Mr. Lucas De Meyer.
 
 ## Project Structure
 
